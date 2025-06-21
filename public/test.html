@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Agent Demo 测试</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .test-section {
+        background: white;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+      .result {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+        white-space: pre-wrap;
+      }
+      .loading {
+        color: #007bff;
+        font-style: italic;
+      }
+      .task-breakdown {
+        background: #e7f3ff;
+        padding: 10px;
+        border-left: 4px solid #007bff;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🐉 AI Agent Demo 功能测试</h1>
+
+    <div class="test-section">
+      <h2>1. Loading状态测试</h2>
+      <button onclick="testAIResponse()">
+        测试AI响应（含Loading和任务分解）
+      </button>
+      <div id="loading-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>2. 任务分解显示测试</h2>
+      <button onclick="testTaskBreakdown()">测试任务分解API</button>
+      <div id="task-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>3. 综合功能测试</h2>
+      <button onclick="testFullFeatures()">测试完整功能</button>
+      <div id="full-result" class="result"></div>
+    </div>
+
+    <script>
+      let isLoading = false;
+
+      function showLoading(elementId, message) {
+        const element = document.getElementById(elementId);
+        element.innerHTML = `<div class="loading">🔄 ${message}</div>`;
+      }
+
+      function displayTaskBreakdown(taskBreakdown, elementId) {
+        const element = document.getElementById(elementId);
+        let html = '<div class="task-breakdown"><h4>📋 任务分解：</h4>';
+
+        if (taskBreakdown.immediate_tasks) {
+          html += "<h5>🚀 立即任务：</h5><ul>";
+          taskBreakdown.immediate_tasks.forEach((task) => {
+            html += `<li>${task}</li>`;
+          });
+          html += "</ul>";
+        }
+
+        if (taskBreakdown.mid_term_tasks) {
+          html += "<h5>📅 中期任务：</h5><ul>";
+          taskBreakdown.mid_term_tasks.forEach((task) => {
+            html += `<li>${task}</li>`;
+          });
+          html += "</ul>";
+        }
+
+        if (taskBreakdown.final_preparation) {
+          html += "<h5>🎯 最终准备：</h5><ul>";
+          taskBreakdown.final_preparation.forEach((task) => {
+            html += `<li>${task}</li>`;
+          });
+          html += "</ul>";
+        }
+
+        html += "</div>";
+        element.innerHTML += html;
+      }
+
+      async function testAIResponse() {
+        if (isLoading) return;
+        isLoading = true;
+
+        showLoading("loading-result", "正在调用AI接口...");
+
+        try {
+          const response = await fetch("/api/ai/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              question: "推荐挑战冰龙的装备",
+              sessionId: "test",
+            }),
+          });
+
+          const data = await response.json();
+
+          let result = "✅ AI响应成功！\n\n";
+          result += `小精灵回复：${data.response.fairy_response}\n\n`;
+
+          if (data.response.task_breakdown) {
+            result += "✅ 任务分解功能正常工作！\n\n";
+            document.getElementById("loading-result").innerHTML = result;
+            displayTaskBreakdown(
+              data.response.task_breakdown,
+              "loading-result"
+            );
+          } else {
+            document.getElementById("loading-result").innerHTML =
+              result + "❌ 未找到任务分解数据";
+          }
+        } catch (error) {
+          document.getElementById(
+            "loading-result"
+          ).innerHTML = `❌ 请求失败：${error.message}`;
+        }
+
+        isLoading = false;
+      }
+
+      async function testTaskBreakdown() {
+        showLoading("task-result", "测试任务分解功能...");
+
+        try {
+          const response = await fetch("/api/ai/tasks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              goal: "击败火龙大魔王",
+              sessionId: "test",
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success && data.taskDecomposition) {
+            let result = "✅ 任务分解API正常工作！\n\n";
+            result += `目标分析：${data.taskDecomposition.goal_analysis}\n\n`;
+
+            document.getElementById("task-result").innerHTML = result;
+
+            if (data.taskDecomposition.immediate_tasks) {
+              displayTaskBreakdown(
+                {
+                  immediate_tasks: data.taskDecomposition.immediate_tasks,
+                  mid_term_tasks: data.taskDecomposition.mid_term_tasks,
+                  final_preparation: data.taskDecomposition.final_preparation,
+                },
+                "task-result"
+              );
+            }
+          } else {
+            document.getElementById("task-result").innerHTML =
+              "❌ 任务分解API响应异常";
+          }
+        } catch (error) {
+          document.getElementById(
+            "task-result"
+          ).innerHTML = `❌ 请求失败：${error.message}`;
+        }
+      }
+
+      async function testFullFeatures() {
+        showLoading("full-result", "测试完整功能组合...");
+
+        try {
+          const healthResponse = await fetch("/api/health");
+          const healthData = await healthResponse.json();
+
+          let result = "🏥 服务器健康状态：" + healthData.status + "\n\n";
+
+          const stateResponse = await fetch("/api/game/state/test");
+          const stateData = await stateResponse.json();
+
+          result +=
+            "🎮 游戏状态加载：" +
+            (stateData.success ? "成功" : "失败") +
+            "\n\n";
+
+          result += "🎉 基础功能测试完成！";
+
+          document.getElementById("full-result").innerHTML = result;
+        } catch (error) {
+          document.getElementById(
+            "full-result"
+          ).innerHTML = `❌ 综合测试失败：${error.message}`;
+        }
+      }
+    </script>
+  </body>
+</html>

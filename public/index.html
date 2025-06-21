@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>龙族传说 - AI Agent 冒险</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Courier New", monospace;
+        background: #222;
+        color: #fff;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .game-wrapper {
+        max-width: 1400px;
+        width: 100%;
+        background: #333;
+        border: 2px solid #666;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .game-container {
+        display: grid;
+
+        grid-template-columns: 400px 1fr;
+        height: 1200px;
+        gap: 0;
+      }
+
+      /* 左侧状态面板 */
+      .status-panel {
+        background: #2a2a2a;
+        border-right: 2px solid #666;
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .panel-section {
+        background: #444;
+        border: 1px solid #666;
+        margin-bottom: 20px;
+        padding: 15px;
+      }
+
+      .section-title {
+        color: #fff;
+        font-size: 14px;
+        font-weight: bold;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #666;
+        padding-bottom: 6px;
+      }
+
+      .character-info {
+        display: grid;
+        gap: 8px;
+      }
+
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        padding: 4px 0;
+      }
+
+      .info-label {
+        color: #ccc;
+      }
+
+      .info-value {
+        color: #fff;
+        font-weight: bold;
+      }
+
+      .level-value {
+        color: #4caf50;
+      }
+
+      .equipment-grid {
+        display: grid;
+        gap: 8px;
+      }
+
+      .equipment-item {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        background: #555;
+        border: 1px solid #777;
+        font-size: 13px;
+      }
+
+      .equipment-icon {
+        width: 20px;
+        height: 20px;
+        margin-right: 8px;
+        background-size: cover;
+        background-position: center;
+        border: 1px solid #999;
+        image-rendering: pixelated;
+      }
+
+      .region-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .region-card {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        background: #555;
+        border: 1px solid #777;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .region-card:hover:not(.completed):not(.disabled) {
+        background: #666;
+      }
+
+      .region-card.completed {
+        background: #4a6b3a;
+        border-color: #4caf50;
+      }
+
+      .region-card.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .region-icon {
+        width: 32px;
+        height: 32px;
+        margin-right: 12px;
+        background-size: cover;
+        background-position: center;
+        border: 1px solid #999;
+        image-rendering: pixelated;
+      }
+
+      .region-info h4 {
+        color: #fff;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+
+      .region-info p {
+        color: #ccc;
+        font-size: 11px;
+      }
+
+      .boss-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .boss-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 15px;
+        background: #555;
+        border: 1px solid #777;
+        cursor: pointer;
+        position: relative;
+        transition: background 0.2s;
+      }
+
+      .boss-card:hover:not(.defeated):not(.disabled) {
+        background: #666;
+      }
+
+      .boss-card.defeated {
+        opacity: 0.5;
+        background: #444;
+      }
+
+      .boss-card.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .boss-icon {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 8px;
+        background-size: cover;
+        background-position: center;
+        border: 1px solid #999;
+        image-rendering: pixelated;
+      }
+
+      .boss-name {
+        color: #fff;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 4px;
+      }
+
+      .boss-status {
+        color: #ccc;
+        font-size: 10px;
+        text-align: center;
+      }
+
+      .key-indicator {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 16px;
+        height: 16px;
+        background-size: cover;
+        background-position: center;
+        image-rendering: pixelated;
+      }
+
+      /* 右侧主游戏区域 */
+      .main-game-area {
+        display: flex;
+        flex-direction: column;
+        background: #2a2a2a;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .story-header {
+        background: #444;
+        padding: 20px;
+        text-align: center;
+        border-bottom: 2px solid #666;
+      }
+
+      .story-title {
+        font-size: 20px;
+        font-weight: bold;
+        color: #fff;
+        margin-bottom: 10px;
+      }
+
+      .story-subtitle {
+        font-size: 14px;
+        color: #ccc;
+        margin-bottom: 15px;
+      }
+
+      .story-intro {
+        font-size: 12px;
+        color: #ddd;
+        max-width: 600px;
+        margin: 0 auto;
+        line-height: 1.5;
+        background: #555;
+        padding: 15px;
+        border: 1px solid #777;
+      }
+
+      .game-content {
+        flex: 1;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        overflow-y: auto;
+      }
+
+      .ai-thinking-display {
+        background: #444;
+        border: 1px solid #666;
+        padding: 20px;
+        margin-bottom: 20px;
+        display: none;
+      }
+
+      .ai-thinking-display.show {
+        display: block;
+      }
+
+      .ai-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .ai-icon {
+        width: 20px;
+        height: 20px;
+        background: #4caf50;
+        margin-right: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #000;
+        font-size: 10px;
+      }
+
+      .ai-capability {
+        color: #fff;
+        font-size: 14px;
+        font-weight: bold;
+        flex: 1;
+      }
+
+      .clear-analysis-btn {
+        background: #666;
+        border: 1px solid #888;
+        color: #fff;
+        padding: 4px 8px;
+        font-size: 10px;
+        cursor: pointer;
+        font-family: "Courier New", monospace;
+        transition: background 0.2s;
+        margin-left: 10px;
+      }
+
+      .clear-analysis-btn:hover {
+        background: #777;
+      }
+
+      .thinking-content {
+        background: #555;
+        padding: 15px;
+        border-left: 2px solid #4caf50;
+        max-height: 850px;
+        overflow-y: auto;
+      }
+
+      .thinking-step {
+        margin-bottom: 10px;
+        padding: 8px;
+        background: #666;
+        font-size: 12px;
+        color: #fff;
+      }
+
+      .thinking-step:last-child {
+        margin-bottom: 0;
+      }
+
+      .step-number {
+        color: #4caf50;
+        font-weight: bold;
+        margin-right: 8px;
+      }
+
+      .capability-header {
+        background: #4a6b3a !important;
+        border: 1px solid #4caf50;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+
+      .thinking-separator {
+        margin: 10px 0;
+      }
+
+      /* API响应展示区域 */
+      .api-response {
+        background: #333;
+        border: 1px solid #666;
+        margin-bottom: 20px;
+        display: none;
+        max-height: 400px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .api-response.show {
+        display: flex;
+      }
+
+      .api-response-header {
+        background: #444;
+        padding: 15px;
+        border-bottom: 1px solid #666;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .api-response-header h3 {
+        color: #4caf50;
+        font-size: 14px;
+        margin: 0;
+      }
+
+      .close-api-response {
+        background: #666;
+        border: 1px solid #888;
+        color: #fff;
+        padding: 4px 8px;
+        font-size: 12px;
+        cursor: pointer;
+        font-family: "Courier New", monospace;
+        transition: background 0.2s;
+      }
+
+      .close-api-response:hover {
+        background: #777;
+      }
+
+      .api-response-content {
+        padding: 15px;
+        overflow-y: auto;
+        flex: 1;
+        background: #2a2a2a;
+        white-space: pre-wrap;
+        font-family: "Courier New", monospace;
+        font-size: 11px;
+        line-height: 1.4;
+        color: #ccc;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 20px;
+      }
+
+      .action-btn {
+        padding: 10px 20px;
+        background: #555;
+        border: 1px solid #777;
+        color: #fff;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        font-family: "Courier New", monospace;
+        transition: background 0.2s;
+      }
+
+      .action-btn:hover:not(:disabled) {
+        background: #666;
+      }
+
+      .action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .tool-selection-area {
+        background: #444;
+        border: 1px solid #666;
+        padding: 20px;
+        display: none;
+      }
+
+      .tool-selection-area.show {
+        display: block;
+      }
+
+      .tool-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .tool-card {
+        background: #555;
+        border: 1px solid #777;
+        padding: 15px;
+        cursor: pointer;
+        text-align: center;
+        transition: background 0.2s;
+      }
+
+      .tool-card:hover {
+        background: #666;
+      }
+
+      .tool-card.selected {
+        background: #4a6b3a;
+        border-color: #4caf50;
+      }
+
+      .tool-icon {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 10px;
+        background-size: cover;
+        background-position: center;
+        border: 1px solid #999;
+        image-rendering: pixelated;
+      }
+
+      .tool-name {
+        color: #fff;
+        font-weight: bold;
+        margin-bottom: 6px;
+        font-size: 12px;
+      }
+
+      .tool-description {
+        color: #ccc;
+        font-size: 11px;
+      }
+
+      /* 游戏状态指示 */
+      .game-status {
+        background: #333;
+        border: 1px solid #666;
+        padding: 15px;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .game-status.show {
+        display: block;
+      }
+
+      .status-message {
+        color: #4caf50;
+        font-size: 14px;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      .status-hint {
+        color: #ccc;
+        font-size: 11px;
+      }
+
+      .victory-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .victory-content {
+        background: #444;
+        padding: 30px;
+        border: 2px solid #666;
+        text-align: center;
+        max-width: 500px;
+      }
+
+      .victory-title {
+        font-size: 24px;
+        color: #fff;
+        margin-bottom: 15px;
+      }
+
+      .victory-message {
+        font-size: 12px;
+        color: #ccc;
+        margin-bottom: 20px;
+        line-height: 1.4;
+      }
+
+      .loading-spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid #666;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+        margin-left: 8px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* API Loading 效果 */
+      .api-loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        font-family: "Courier New", monospace;
+      }
+
+      .api-loading-overlay.show {
+        display: flex;
+      }
+
+      .api-loading-content {
+        background: #333;
+        border: 2px solid #666;
+        padding: 30px;
+        text-align: center;
+        min-width: 300px;
+      }
+
+      .api-loading-title {
+        color: #fff;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 15px;
+      }
+
+      .api-loading-status {
+        color: #4caf50;
+        font-size: 12px;
+        margin-bottom: 20px;
+      }
+
+      .api-loading-spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 4px solid #666;
+        border-top: 4px solid #4caf50;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 15px;
+      }
+
+      .api-loading-dots {
+        color: #ccc;
+        font-size: 14px;
+      }
+
+      .api-loading-dots::after {
+        content: "";
+        animation: dots 2s infinite;
+      }
+
+      @keyframes dots {
+        0%,
+        20% {
+          content: "";
+        }
+        40% {
+          content: ".";
+        }
+        60% {
+          content: "..";
+        }
+        80%,
+        100% {
+          content: "...";
+        }
+      }
+
+      /* 响应式设计 */
+      @media (max-width: 1024px) {
+        .game-container {
+          grid-template-columns: 350px 1fr;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .game-wrapper {
+          max-width: none;
+          height: 100vh;
+        }
+
+        .game-container {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+          height: 100%;
+        }
+
+        .status-panel {
+          border-right: none;
+          border-bottom: 2px solid #666;
+          max-height: 45vh;
+          padding: 15px;
+        }
+
+        .panel-section {
+          margin-bottom: 15px;
+          padding: 12px;
+        }
+
+        .section-title {
+          font-size: 13px;
+        }
+
+        .info-item {
+          font-size: 12px;
+        }
+
+        .equipment-item {
+          font-size: 12px;
+        }
+
+        .region-info h4 {
+          font-size: 12px;
+        }
+
+        .boss-name {
+          font-size: 11px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-wrapper">
+      <div class="game-container">
+        <!-- 左侧状态面板 -->
+        <div class="status-panel">
+          <!-- 角色信息 -->
+          <div class="panel-section">
+            <div class="section-title">⚔️ 角色状态</div>
+            <div class="character-info">
+              <div class="info-item">
+                <span class="info-label">等级</span>
+                <span class="info-value level-value" id="player-level">1</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">生命值</span>
+                <span class="info-value" id="player-health">100/100</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">当前位置</span>
+                <span class="info-value" id="player-location">新手村</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">钥匙</span>
+                <span class="info-value" id="player-keys">0/3</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 当前装备 -->
+          <div class="panel-section">
+            <div class="section-title">🛡️ 当前装备</div>
+            <div class="equipment-grid" id="equipment-list">
+              <div class="equipment-item">
+                <div
+                  class="equipment-icon"
+                  style="background-image: url('../assets/normal_sword.webp')"
+                ></div>
+                <span>基础剑</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 可访问区域 -->
+          <div class="panel-section">
+            <div class="section-title">🗺️ 可访问区域</div>
+            <div class="region-grid" id="regions-list">
+              <div class="region-card" data-region="training">
+                <div
+                  class="region-icon"
+                  style="background-image: url('../assets/fire_land.jpeg')"
+                ></div>
+                <div class="region-info">
+                  <h4>练级圣地</h4>
+                  <p>升级10级 + 火焰之剑</p>
+                </div>
+              </div>
+              <div class="region-card" data-region="marsh">
+                <div
+                  class="region-icon"
+                  style="background-image: url('../assets/marsh_land.jpeg')"
+                ></div>
+                <div class="region-info">
+                  <h4>剧毒深渊</h4>
+                  <p>获得黑暗之剑</p>
+                </div>
+              </div>
+              <div class="region-card" data-region="thunder">
+                <div
+                  class="region-icon"
+                  style="background-image: url('../assets/thunder_land.jpeg')"
+                ></div>
+                <div class="region-info">
+                  <h4>雷霆内部</h4>
+                  <p>获得圣光盾</p>
+                </div>
+              </div>
+              <div class="region-card" data-region="ice">
+                <div
+                  class="region-icon"
+                  style="background-image: url('../assets/ice_land.jpeg')"
+                ></div>
+                <div class="region-info">
+                  <h4>寒冰群峰</h4>
+                  <p>获得寒冰之剑</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 可挑战Boss -->
+          <div class="panel-section">
+            <div class="section-title">🐉 可挑战Boss</div>
+            <div class="boss-grid" id="boss-list">
+              <div class="boss-card" data-boss="ice-dragon">
+                <div
+                  class="boss-icon"
+                  style="background-image: url('../assets/ice_dragon.png')"
+                ></div>
+                <div
+                  class="key-indicator"
+                  style="background-image: url('../assets/ice_key.webp')"
+                ></div>
+                <div class="boss-name">冰龙</div>
+                <div class="boss-status">需要火焰之剑</div>
+              </div>
+              <div class="boss-card" data-boss="poison-dragon">
+                <div
+                  class="boss-icon"
+                  style="background-image: url('../assets/green_dragon.jpeg')"
+                ></div>
+                <div
+                  class="key-indicator"
+                  style="background-image: url('../assets/poison_key.jpeg')"
+                ></div>
+                <div class="boss-name">毒龙</div>
+                <div class="boss-status">需要圣光盾</div>
+              </div>
+              <div class="boss-card" data-boss="thunder-dragon">
+                <div
+                  class="boss-icon"
+                  style="background-image: url('../assets/electric_dragon.png')"
+                ></div>
+                <div
+                  class="key-indicator"
+                  style="background-image: url('../assets/thunder_key.avif')"
+                ></div>
+                <div class="boss-name">雷龙</div>
+                <div class="boss-status">需要黑暗之剑</div>
+              </div>
+              <div class="boss-card" data-boss="fire-dragon">
+                <div
+                  class="boss-icon"
+                  style="background-image: url('../assets/fire_dragon.webp')"
+                ></div>
+                <div class="boss-name">火龙 (最终Boss)</div>
+                <div class="boss-status">需要三把钥匙</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧主游戏区域 -->
+        <div class="main-game-area">
+          <!-- 故事背景 -->
+          <div class="story-header">
+            <h1 class="story-title">🐉 龙族传说</h1>
+            <h2 class="story-subtitle">AI Agent 冒险之旅</h2>
+            <div class="story-intro">
+              在古老的魔法大陆上，四条强大的龙族分别统治着不同的领域。
+              火龙、冰龙、毒龙和雷龙各自占据一方，维持着微妙的平衡。
+              然而，最强大的火龙大魔王正在苏醒，只有集齐三把神秘钥匙才能阻止它。
+              作为勇敢的冒险者，你需要运用智慧与勇气，挑战各路强敌！
+            </div>
+          </div>
+
+          <!-- 游戏内容区 -->
+          <div class="game-content">
+            <!-- 游戏状态指示 -->
+            <div class="game-status" id="game-status">
+              <div class="status-message" id="status-message">
+                🎮 欢迎来到龙族传说！
+              </div>
+              <div class="status-hint" id="status-hint">
+                点击"🚀 开始冒险"按钮来开始你的英雄之旅
+              </div>
+            </div>
+
+            <!-- AI思维展示区域 -->
+            <div class="ai-thinking-display" id="ai-thinking">
+              <div class="ai-header">
+                <div class="ai-icon">AI</div>
+                <div class="ai-capability" id="ai-capability">
+                  🤖 AI 能力展示
+                </div>
+                <button
+                  class="clear-analysis-btn"
+                  id="clear-analysis"
+                  onclick="clearAIAnalysis()"
+                >
+                  🗑️ 清空分析
+                </button>
+                <button
+                  class="clear-analysis-btn"
+                  id="toggle-api-response"
+                  onclick="toggleAPIResponse()"
+                  style="margin-left: 5px"
+                >
+                  📋 原始响应
+                </button>
+              </div>
+              <div class="thinking-content" id="thinking-content">
+                <div class="thinking-step">
+                  <span class="step-number">1.</span
+                  ><span>正在分析游戏情况...</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 工具选择区域 -->
+            <div class="tool-selection-area" id="tool-selection">
+              <h3 style="color: #fff; margin-bottom: 10px">
+                🛠️ 选择你的战斗装备
+              </h3>
+              <p style="color: #ccc; margin-bottom: 15px; font-size: 11px">
+                AI分析推荐以下装备组合，请选择你认为最适合的装备：
+              </p>
+              <div class="tool-grid" id="tool-grid">
+                <!-- 工具选项将在这里动态生成 -->
+              </div>
+              <div class="action-buttons">
+                <button class="action-btn" id="confirm-tools">确认选择</button>
+                <button class="action-btn" id="cancel-selection">取消</button>
+              </div>
+            </div>
+
+            <!-- 游戏操作按钮 -->
+            <div class="action-buttons">
+              <button class="action-btn" id="start-adventure">
+                🚀 开始冒险
+              </button>
+              <button class="action-btn" id="reset-game">🔄 重新开始</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- API原始响应展示区域 -->
+      <div class="api-response" id="api-response">
+        <div class="api-response-header">
+          <h3>🤖 DeepSeek API 原始响应</h3>
+          <button class="close-api-response" onclick="toggleAPIResponse()">
+            ✕
+          </button>
+        </div>
+        <div class="api-response-content" id="api-response-content">
+          <!-- API响应内容将在这里显示 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 胜利画面 -->
+    <div class="victory-screen" id="victory-screen">
+      <div class="victory-content">
+        <h1 class="victory-title">🎉 恭喜通关！</h1>
+        <p class="victory-message">
+          你成功击败了火龙大魔王，拯救了魔法大陆！<br />
+          通过运用AI Agent的三种核心能力，你展现了真正的智慧与勇气。<br />
+          <strong>任务拆分</strong>让你制定了完美的战略计划，<br />
+          <strong>工具选择</strong>帮你选择了最佳的装备组合，<br />
+          <strong>思维链推理</strong>引导你做出了正确的决策。
+        </p>
+        <button class="action-btn" onclick="location.reload()">
+          🎮 再玩一次
+        </button>
+      </div>
+    </div>
+
+    <!-- API Loading 遮罩 -->
+    <div class="api-loading-overlay" id="api-loading">
+      <div class="api-loading-content">
+        <div class="api-loading-title" id="api-loading-title">
+          🤖 AI 正在思考中
+        </div>
+        <div class="api-loading-status" id="api-loading-status">
+          连接到 DeepSeek API
+        </div>
+        <div class="api-loading-spinner"></div>
+        <div class="api-loading-dots">请稍等，AI 正在分析</div>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
