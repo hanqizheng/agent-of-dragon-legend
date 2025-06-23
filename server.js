@@ -101,13 +101,32 @@ app.post("/api/ai/tools", async (req, res) => {
     }
 
     console.log("🛠️ 工具选择请求:", question);
-    const result = await aiAgent.selectTools(question, gameState || {});
+
+    // 从问题中提取Boss名称
+    let bossName = question;
+    if (question.includes("对战")) {
+      bossName = question.replace("对战", "").trim();
+    }
+
+    console.log("🎯 识别目标Boss:", bossName);
+
+    const result = await aiAgent.selectTools(bossName, gameState || {});
+
+    if (!result) {
+      return res.status(400).json({
+        success: false,
+        error: `未找到Boss信息: ${bossName}`,
+      });
+    }
 
     res.json({
       success: true,
       thinking: result.thinking,
       answer: result.answer,
       tools: result.tools,
+      selectedTools: result.selectedTools,
+      recommendedEquipment: result.recommendedEquipment,
+      toolCallsUsed: result.toolCallsUsed,
       capability: result.capability,
       raw_data: result,
     });

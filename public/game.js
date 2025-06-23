@@ -21,8 +21,8 @@ class GameState {
       },
       marsh: {
         name: "剧毒深渊",
-        description: "获得黑暗之剑",
-        reward: { equipment: "黑暗之剑" },
+        description: "获得暗黑之剑",
+        reward: { equipment: "暗黑之剑" },
         completed: false,
         image: "marsh_land.jpeg",
       },
@@ -61,7 +61,7 @@ class GameState {
       },
       "thunder-dragon": {
         name: "雷龙",
-        requiredEquipment: "黑暗之剑",
+        requiredEquipment: "暗黑之剑",
         keyReward: "雷钥匙",
         defeated: false,
         image: "electric_dragon.png",
@@ -79,7 +79,7 @@ class GameState {
     this.equipmentImages = {
       基础剑: "normal_sword.webp",
       火焰之剑: "fire_sword.jpg",
-      黑暗之剑: "dark_sword.webp",
+      暗黑之剑: "dark_sword.webp",
       圣光盾: "god_light_shield.png",
       寒冰之剑: "ice_sword.jpeg",
       冰钥匙: "ice_key.webp",
@@ -356,7 +356,7 @@ class AIAgent {
     const descriptions = {
       基础剑: "普通的剑，攻击力一般",
       火焰之剑: "火焰附魔，对冰系敌人有奇效",
-      黑暗之剑: "暗黑力量，对雷系敌人有效",
+      暗黑之剑: "暗黑力量，对雷系敌人有效",
       圣光盾: "圣光护佑，对毒系敌人免疫",
       寒冰之剑: "冰霜之力，对火系敌人克制",
     };
@@ -739,24 +739,55 @@ class GameController {
           "工具选择 API"
         );
 
+        // 保存AI选择信息
+        this.currentAISelection = {
+          selectedTools: data.selectedTools || [],
+          recommendedEquipment: data.recommendedEquipment || [],
+          toolCallsUsed: data.toolCallsUsed || false,
+        };
+
         // 解析API返回的思维步骤
         const thinking = this.parseThinkingFromAPI(
           data.thinking || data.answer
         );
 
+        // 显示AI分析结果
+        let analysisText = `✅ AI分析完成：对战${boss.name}的装备方案`;
+
+        // 如果AI选择了工具，显示选择结果
+        if (data.selectedTools && data.selectedTools.length > 0) {
+          analysisText += `\n\n🎯 AI推荐装备：`;
+          data.selectedTools.forEach((tool) => {
+            analysisText += `\n• ${tool.name} - ${tool.reason}`;
+          });
+        }
+
         this.showAIThinking(
-          `✅ AI分析完成：对战${boss.name}的装备方案`,
+          analysisText,
           "工具选择",
           thinking,
           true // 清空之前的内容
         );
 
-        // 生成工具选择选项
-        const tools = this.generateToolOptions(boss);
+        // 使用API返回的工具选项，优先使用AI选择的工具
+        let tools = data.tools || this.generateToolOptions(boss);
+
+        // 如果有AI选择的工具，标记它们
+        if (data.recommendedEquipment && data.recommendedEquipment.length > 0) {
+          tools.forEach((tool) => {
+            if (data.recommendedEquipment.includes(tool.name)) {
+              tool.aiSelected = true;
+              tool.isRecommended = true;
+            }
+          });
+        }
 
         // 显示工具选择界面
         setTimeout(() => {
-          this.showToolSelection(tools, boss.requiredEquipment);
+          this.showToolSelection(
+            tools,
+            data.recommendedEquipment || boss.requiredEquipment
+          );
           this.isProcessing = false; // 恢复交互
         }, 4000);
       } else {
@@ -991,17 +1022,42 @@ class GameController {
       const toolCard = document.createElement("div");
       toolCard.className = "tool-card";
       const isKey = ["冰钥匙", "毒钥匙", "雷钥匙"].includes(tool.name);
+      const isAISelected = tool.aiSelected || tool.isRecommended;
+
+      // 构建AI推荐信息
+      let aiRecommendationHTML = "";
+      if (isAISelected) {
+        aiRecommendationHTML = `<div style="color: #00d4ff; font-weight: bold; margin-top: 5px;">🤖 AI推荐</div>`;
+      }
+
+      if (tool.aiSelected) {
+        aiRecommendationHTML += `<div style="color: #ffeb3b; font-weight: bold; margin-top: 3px; font-size: 10px;">🎯 智能选择</div>`;
+      }
+
+      // 查找AI选择的详细信息
+      let aiDetailsHTML = "";
+      if (this.currentAISelection && this.currentAISelection.selectedTools) {
+        const aiTool = this.currentAISelection.selectedTools.find(
+          (st) => st.name === tool.name
+        );
+        if (aiTool) {
+          aiDetailsHTML = `
+            <div style="background: rgba(0, 212, 255, 0.1); padding: 5px; margin-top: 5px; border-radius: 3px; font-size: 10px;">
+              <div style="color: #00d4ff; font-weight: bold;">🎯 目标：${aiTool.target}</div>
+              <div style="color: #ffeb3b; margin-top: 2px;">💡 理由：${aiTool.reason}</div>
+            </div>
+          `;
+        }
+      }
+
       toolCard.innerHTML = `
         <div class="tool-icon" style="background-image: url('../assets/${
           tool.image
         }')"></div>
         <div class="tool-name">${tool.name}${isKey ? " 🗝️" : ""}</div>
         <div class="tool-description">${tool.description}</div>
-        ${
-          tool.isRecommended
-            ? '<div style="color: #00d4ff; font-weight: bold; margin-top: 5px;">🌟 AI推荐</div>'
-            : ""
-        }
+        ${aiRecommendationHTML}
+        ${aiDetailsHTML}
         ${
           isKey && boss.name === "火龙大魔王"
             ? '<div style="color: #ff6b6b; font-weight: bold; margin-top: 3px; font-size: 10px;">必须选择</div>'
@@ -1009,26 +1065,50 @@ class GameController {
         }
       `;
 
+      // 如果AI选择了这个工具，给它特殊样式并自动选择
+      if (tool.aiSelected) {
+        toolCard.style.border = "2px solid #00d4ff";
+        toolCard.style.boxShadow = "0 0 10px rgba(0, 212, 255, 0.3)";
+        // 自动选择AI推荐的工具
+        toolCard.classList.add("selected");
+        this.selectedTools.push(tool.name);
+      }
+
       toolCard.addEventListener("click", () => {
         toolCard.classList.toggle("selected");
         if (toolCard.classList.contains("selected")) {
-          this.selectedTools.push(tool.name);
+          if (!this.selectedTools.includes(tool.name)) {
+            this.selectedTools.push(tool.name);
+          }
         } else {
           this.selectedTools = this.selectedTools.filter(
             (t) => t !== tool.name
           );
         }
+
+        console.log("🖱️ 工具选择更新:", this.selectedTools);
       });
 
       toolGrid.appendChild(toolCard);
     });
 
-    // 为火龙大魔王设置特殊的correctTool
+    // 正确设置correctTool
     if (boss.name === "火龙大魔王") {
       this.correctTool = ["冰钥匙", "毒钥匙", "雷钥匙"]; // 数组形式
     } else {
-      this.correctTool = correctTool;
+      // 使用AI推荐的工具作为正确答案，如果没有则使用传统的requiredEquipment
+      if (
+        this.currentAISelection &&
+        this.currentAISelection.recommendedEquipment &&
+        this.currentAISelection.recommendedEquipment.length > 0
+      ) {
+        this.correctTool = this.currentAISelection.recommendedEquipment[0];
+      } else {
+        this.correctTool = correctTool || boss.requiredEquipment;
+      }
     }
+
+    console.log("🎯 设置正确工具:", this.correctTool);
     toolSelection.classList.add("show");
   }
 
@@ -1041,10 +1121,24 @@ class GameController {
     const boss = this.gameState.bosses[this.currentBattleTarget];
     let isCorrect = false;
 
+    console.log("🎯 确认工具选择:", {
+      bossName: boss.name,
+      selectedTools: this.selectedTools,
+      correctTool: this.correctTool,
+      requiredEquipment: boss.requiredEquipment,
+      aiRecommendedEquipment: this.currentAISelection?.recommendedEquipment,
+    });
+
     if (boss.name === "火龙大魔王") {
       // 火龙大魔王需要选择所有三把钥匙
       const requiredKeys = ["冰钥匙", "毒钥匙", "雷钥匙"];
       isCorrect = requiredKeys.every((key) => this.selectedTools.includes(key));
+
+      console.log("🔑 火龙大魔王验证:", {
+        requiredKeys,
+        selectedTools: this.selectedTools,
+        isCorrect,
+      });
 
       if (
         !isCorrect &&
@@ -1058,9 +1152,34 @@ class GameController {
         return;
       }
     } else {
-      // 其他Boss的单选逻辑
-      isCorrect = this.selectedTools.includes(this.correctTool);
+      // 其他Boss的验证逻辑：支持AI推荐多个工具的情况
+      if (
+        this.currentAISelection &&
+        this.currentAISelection.recommendedEquipment
+      ) {
+        // 如果AI推荐了多个装备，只要选择了其中包含正确装备即可
+        const requiredEquipment = boss.requiredEquipment;
+        isCorrect = this.selectedTools.includes(requiredEquipment);
+
+        console.log("🤖 AI多工具验证:", {
+          selectedTools: this.selectedTools,
+          requiredEquipment: requiredEquipment,
+          aiRecommended: this.currentAISelection.recommendedEquipment,
+          isCorrect,
+        });
+      } else {
+        // 传统单选逻辑
+        isCorrect = this.selectedTools.includes(this.correctTool);
+
+        console.log("⚔️ 传统单选验证:", {
+          selectedTools: this.selectedTools,
+          correctTool: this.correctTool,
+          isCorrect,
+        });
+      }
     }
+
+    console.log("🏆 最终战斗结果:", isCorrect ? "胜利" : "失败");
 
     this.hideToolSelection();
 
@@ -1264,7 +1383,7 @@ class GameController {
     const descriptions = {
       基础剑: "普通的剑，攻击力一般",
       火焰之剑: "火焰附魔，对冰系敌人有奇效",
-      黑暗之剑: "暗黑力量，对雷系敌人有效",
+      暗黑之剑: "暗黑力量，对雷系敌人有效",
       圣光盾: "圣光护佑，对毒系敌人免疫",
       寒冰之剑: "冰霜之力，对火系敌人克制",
       冰钥匙: "冰龙的钥匙，蕴含冰霜之力",
@@ -1323,7 +1442,7 @@ function showAPIResponse(response, apiType = "DeepSeek API") {
   const toggleBtn = document.getElementById("toggle-api-response");
 
   apiResponseHeader.textContent = `🤖 ${apiType} 原始响应`;
-  
+
   // 格式化响应内容
   let formattedResponse;
   if (typeof response === "string") {
@@ -1332,10 +1451,10 @@ function showAPIResponse(response, apiType = "DeepSeek API") {
     // 美化JSON显示
     formattedResponse = JSON.stringify(response, null, 2);
   }
-  
+
   apiResponseContent.textContent = formattedResponse;
   apiResponseDiv.classList.add("show");
-  
+
   // 更新按钮状态
   if (toggleBtn) {
     toggleBtn.textContent = "📋 隐藏响应";
@@ -1352,7 +1471,7 @@ function hideAPIResponse() {
 function toggleAPIResponse() {
   const apiResponseDiv = document.getElementById("api-response");
   const toggleBtn = document.getElementById("toggle-api-response");
-  
+
   if (apiResponseDiv.classList.contains("show")) {
     apiResponseDiv.classList.remove("show");
     toggleBtn.textContent = "📋 原始响应";
@@ -1360,7 +1479,8 @@ function toggleAPIResponse() {
     // 如果没有内容，显示提示
     const apiResponseContent = document.getElementById("api-response-content");
     if (!apiResponseContent.textContent.trim()) {
-      apiResponseContent.textContent = "暂无API响应内容。\n\n请先执行一次AI分析（任务分解、工具选择或思维链推理）来获取DeepSeek API的原始响应。";
+      apiResponseContent.textContent =
+        "暂无API响应内容。\n\n请先执行一次AI分析（任务分解、工具选择或思维链推理）来获取DeepSeek API的原始响应。";
     }
     apiResponseDiv.classList.add("show");
     toggleBtn.textContent = "📋 隐藏响应";

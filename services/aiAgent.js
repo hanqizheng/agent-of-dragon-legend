@@ -5,104 +5,75 @@ class AIAgent {
     this.apiKey = process.env.DEEPSEEK_API_KEY;
     this.apiUrl = "https://api.deepseek.com/v1/chat/completions";
 
-    // 游戏装备数据
+    // 装备数据
     this.equipmentData = {
-      火焰之剑: {
-        type: "weapon",
-        damage: 45,
-        effect: "对冰系敌人造成额外伤害",
-        weakness_target: ["ice"],
-        description: "火焰附魔的神剑，能融化一切冰霜",
+      基础剑: {
+        description: "最基础的武器",
+        effect: "基础攻击力",
       },
-      黑暗之剑: {
-        type: "weapon",
-        damage: 40,
+      火焰之剑: {
+        description: "火焰附魔的神剑，能融化一切冰霜",
+        effect: "对冰系敌人造成额外伤害",
+      },
+      暗黑之剑: {
+        description: "充满暗黑力量的魔剑，雷电克制",
         effect: "对雷系敌人造成额外伤害",
-        weakness_target: ["thunder"],
-        description: "暗黑力量凝聚的利剑，能吸收雷电",
       },
       圣光盾: {
-        type: "armor",
-        defense: 35,
-        effect: "对毒系敌人免疫",
-        weakness_target: ["poison"],
         description: "圣光护佑的盾牌，能净化毒素",
+        effect: "对毒系敌人免疫",
+      },
+      神圣护盾: {
+        description: "圣光护佑的盾牌，能净化毒素",
+        effect: "对毒系敌人免疫",
       },
       寒冰之剑: {
-        type: "weapon",
-        damage: 42,
+        description: "蕴含冰霜之力的神剑，烈火克制",
         effect: "对火系敌人造成额外伤害",
-        weakness_target: ["fire"],
-        description: "冰霜之力的神剑，能冻结火焰",
-      },
-      基础剑: {
-        type: "weapon",
-        damage: 20,
-        effect: "普通攻击",
-        weakness_target: [],
-        description: "新手使用的基础武器",
       },
       冰钥匙: {
-        type: "key",
-        damage: 0,
-        effect: "开启火龙大魔王封印",
-        weakness_target: ["fire"],
         description: "冰龙的钥匙，蕴含冰霜之力",
+        effect: "开启火龙大魔王封印",
       },
       毒钥匙: {
-        type: "key",
-        damage: 0,
-        effect: "开启火龙大魔王封印",
-        weakness_target: ["fire"],
         description: "毒龙的钥匙，散发毒性能量",
+        effect: "开启火龙大魔王封印",
       },
       雷钥匙: {
-        type: "key",
-        damage: 0,
-        effect: "开启火龙大魔王封印",
-        weakness_target: ["fire"],
         description: "雷龙的钥匙，闪烁雷电光芒",
+        effect: "开启火龙大魔王封印",
       },
     };
 
-    // 龙族Boss数据
+    // Boss数据
     this.bossData = {
       冰龙: {
         type: "ice",
-        hp: 800,
+        hp: 500,
         weakness: ["fire"],
-        abilities: ["冰霜吐息", "冰冷领域", "冰封攻击"],
-        location: "寒冰群峰",
+        abilities: ["冰霜吐息", "寒冰护甲", "冰冻攻击"],
         requiredEquipment: "火焰之剑",
-        keyReward: "冰钥匙",
       },
       毒龙: {
         type: "poison",
         hp: 750,
         weakness: ["holy"],
         abilities: ["毒雾喷射", "剧毒爪击", "毒素感染"],
-        location: "剧毒深渊",
         requiredEquipment: "圣光盾",
-        keyReward: "毒钥匙",
       },
       雷龙: {
         type: "thunder",
-        hp: 850,
+        hp: 600,
         weakness: ["dark"],
-        abilities: ["雷电风暴", "电击冲撞", "雷鸣咆哮"],
-        location: "雷霆内部",
-        requiredEquipment: "黑暗之剑",
-        keyReward: "雷钥匙",
+        abilities: ["雷电吐息", "电磁护盾", "闪电风暴"],
+        requiredEquipment: "暗黑之剑",
       },
       火龙大魔王: {
         type: "fire",
-        hp: 1500,
-        weakness: ["ice"],
-        abilities: ["地狱烈焰", "火焰风暴", "炽热冲击", "火焰护盾"],
-        location: "火龙宫殿",
-        requiredKeys: 3,
-        requiredEquipment: "三把钥匙",
-        special: "最终Boss，需要集齐三把钥匙",
+        hp: 1000,
+        weakness: ["ice", "water"],
+        abilities: ["烈焰吐息", "火焰护甲", "炎爆术", "烈火风暴"],
+        requiredEquipment: "冰钥匙、毒钥匙、雷钥匙",
       },
     };
   }
@@ -124,7 +95,7 @@ class AIAgent {
 【游戏规则】：
 - 冰龙：需要火焰之剑才能击败，击败后获得冰钥匙
 - 毒龙：需要圣光盾才能击败，击败后获得毒钥匙  
-- 雷龙：需要黑暗之剑才能击败，击败后获得雷钥匙
+- 雷龙：需要暗黑之剑才能击败，击败后获得雷钥匙
 - 火龙大魔王：需要集齐3把钥匙才能挑战
 
 请按照以下格式输出任务分解：
@@ -166,7 +137,10 @@ class AIAgent {
       return null;
     }
 
-    const prompt = `你是一个装备专家，请分析以下战斗情况并推荐最佳装备选择。
+    // 构建可用装备的tools
+    const availableTools = this.buildEquipmentTools(gameState);
+
+    const prompt = `你是一个装备专家，正在为挑战${targetBoss}选择最佳装备组合。
 
 【挑战目标】：${targetBoss}
 【Boss特性】：
@@ -175,39 +149,24 @@ class AIAgent {
 - 弱点：${bossInfo.weakness.join(", ")}
 - 技能：${bossInfo.abilities.join(", ")}
 
-【玩家装备】：
+【玩家当前装备】：
 ${gameState.player.equipment
   .map((eq) => {
-    const data = this.equipmentData[eq];
-    if (!data) {
-      return `- ${eq}：特殊物品`;
-    }
+    const data = this.equipmentData[eq] || {
+      description: "特殊物品",
+      effect: "未知效果",
+    };
     return `- ${eq}：${data.description}（${data.effect}）`;
   })
   .join("\n")}
 
-【可选装备详情】：
-${Object.entries(this.equipmentData)
-  .map(([name, data]) => `- ${name}：${data.description}，效果：${data.effect}`)
-  .join("\n")}
-
-请按照以下格式分析：
-
-【思维过程】：
-1. 敌人分析：...
-2. 装备匹配：...
-3. 策略选择：...
-4. 风险评估：...
-
-【推荐装备】：
-最佳选择：...
-理由：...
-备选方案：...
-
-【战斗建议】：...`;
+请根据Boss的特性分析，选择最合适的装备来应对这个挑战。你可以选择使用哪些装备工具。`;
 
     try {
-      const response = await this.callDeepSeekAPI(prompt);
+      const response = await this.callDeepSeekAPIWithTools(
+        prompt,
+        availableTools
+      );
       return this.parseToolSelection(response, targetBoss, gameState);
     } catch (error) {
       console.error("工具选择API调用失败:", error);
@@ -342,16 +301,80 @@ ${Object.entries(this.equipmentData)
 
   // 解析工具选择结果
   parseToolSelection(response, targetBoss, gameState) {
-    const thinking = this.extractThinkingSteps(response);
-    const tools = this.generateToolOptions(targetBoss, gameState);
-    const recommendedTool = this.extractRecommendedTool(response);
+    // response现在是完整的API响应数据
+    const message = response.choices?.[0]?.message;
+    const content = message?.content || "";
+    const toolCalls = message?.tool_calls || [];
+
+    // 英文函数名到中文装备名称的反向映射
+    const functionNameMap = {
+      fire_sword: "火焰之剑",
+      ice_sword: "寒冰之剑",
+      dark_sword: "暗黑之剑",
+      normal_sword: "普通剑",
+      basic_sword: "基础剑",
+      holy_shield: "圣光盾",
+      normal_shield: "普通盾牌",
+      poison_key: "毒钥匙",
+      thunder_key: "雷钥匙",
+      ice_key: "冰钥匙",
+      healing_potion: "治疗药水",
+      magic_scroll: "魔法卷轴",
+    };
+
+    console.log("🔍 解析工具选择结果:", {
+      hasContent: !!content,
+      toolCallsCount: toolCalls.length,
+      toolCalls: toolCalls.map((tc) => tc.function?.name),
+    });
+
+    let thinking = content || "AI正在分析装备选择...";
+    let selectedTools = [];
+    let recommendedEquipment = [];
+
+    // 处理AI选择的工具
+    if (toolCalls.length > 0) {
+      toolCalls.forEach((toolCall) => {
+        if (toolCall.function) {
+          const functionName = toolCall.function.name;
+          const args = JSON.parse(toolCall.function.arguments || "{}");
+
+          // 从函数名提取装备名称 - 使用映射表
+          const englishName = functionName.replace(/^use_/, "");
+          const equipmentName =
+            functionNameMap[englishName] || englishName.replace(/_/g, " ");
+
+          selectedTools.push({
+            name: equipmentName,
+            reason: args.reason || "AI推荐使用",
+            target: args.target || targetBoss,
+            image: this.getEquipmentImage(equipmentName),
+            isRecommended: true,
+          });
+
+          recommendedEquipment.push(equipmentName);
+        }
+      });
+    }
+
+    // 生成所有可用工具选项
+    const allTools = this.generateToolOptions(targetBoss, gameState);
+
+    // 标记推荐的装备
+    allTools.forEach((tool) => {
+      if (recommendedEquipment.includes(tool.name)) {
+        tool.isRecommended = true;
+        tool.aiSelected = true;
+      }
+    });
 
     return {
       capability: "工具选择",
       thinking: thinking,
-      tools: tools,
-      correctTool: this.bossData[targetBoss].requiredEquipment,
-      aiRecommendation: recommendedTool,
+      selectedTools: selectedTools, // AI选择的工具
+      tools: allTools, // 所有可用工具
+      recommendedEquipment: recommendedEquipment,
+      toolCallsUsed: toolCalls.length > 0,
       originalResponse: response,
     };
   }
@@ -449,12 +472,6 @@ ${Object.entries(this.equipmentData)
     return [...tools, ...distractors];
   }
 
-  // 提取推荐工具
-  extractRecommendedTool(response) {
-    const recommendMatch = response.match(/最佳选择[：:]\s*([^\n]+)/);
-    return recommendMatch ? recommendMatch[1].trim() : "火焰之剑";
-  }
-
   // 提取思维链步骤
   extractChainOfThoughtSteps(response) {
     const steps = [];
@@ -484,8 +501,9 @@ ${Object.entries(this.equipmentData)
     const imageMap = {
       基础剑: "normal_sword.webp",
       火焰之剑: "fire_sword.jpg",
-      黑暗之剑: "dark_sword.webp",
+      暗黑之剑: "dark_sword.webp",
       圣光盾: "god_light_shield.png",
+      神圣护盾: "god_light_shield.png",
       寒冰之剑: "ice_sword.jpeg",
       冰钥匙: "ice_key.webp",
       毒钥匙: "poison_key.jpeg",
@@ -570,6 +588,129 @@ ${Object.entries(this.equipmentData)
       capability: "思维链推理",
       thinking: thinking,
     };
+  }
+
+  // 构建可用装备的tools
+  buildEquipmentTools(gameState) {
+    const tools = [];
+
+    // 装备名称到英文函数名的映射
+    const equipmentNameMap = {
+      火焰之剑: "fire_sword",
+      暗黑之剑: "dark_sword",
+      寒冰之剑: "ice_sword",
+      普通剑: "normal_sword",
+      基础剑: "basic_sword",
+      圣光盾: "holy_shield",
+      神圣护盾: "holy_shield", // 添加神圣护盾的映射
+      普通盾牌: "normal_shield",
+      毒钥匙: "poison_key",
+      雷钥匙: "thunder_key",
+      冰钥匙: "ice_key",
+      治疗药水: "healing_potion",
+      魔法卷轴: "magic_scroll",
+    };
+
+    // 为每个装备创建一个工具
+    gameState.player.equipment.forEach((equipment) => {
+      const data = this.equipmentData[equipment] || {
+        description: "特殊物品",
+        effect: "未知效果",
+      };
+
+      // 获取英文函数名
+      const englishName =
+        equipmentNameMap[equipment] ||
+        equipment.toLowerCase().replace(/[^a-zA-Z0-9]/g, "_");
+
+      tools.push({
+        type: "function",
+        function: {
+          name: `use_${englishName}`,
+          description: `使用装备：${equipment}。${data.description}，效果：${data.effect}`,
+          parameters: {
+            type: "object",
+            properties: {
+              target: {
+                type: "string",
+                description: "使用装备的目标",
+              },
+              reason: {
+                type: "string",
+                description: "选择这个装备的理由",
+              },
+            },
+            required: ["target", "reason"],
+          },
+        },
+      });
+    });
+
+    return tools;
+  }
+
+  // 调用DeepSeek API并使用tools
+  async callDeepSeekAPIWithTools(prompt, tools) {
+    if (!this.apiKey || this.apiKey === "your_deepseek_api_key_here") {
+      throw new Error("DeepSeek API密钥未设置");
+    }
+
+    console.log("🔧 调用DeepSeek API with Tools:", {
+      url: this.apiUrl,
+      hasApiKey: !!this.apiKey,
+      apiKeyPrefix: this.apiKey ? this.apiKey.substring(0, 10) + "..." : "无",
+      toolsCount: tools.length,
+    });
+
+    const requestBody = {
+      model: "deepseek-chat",
+      messages: [
+        {
+          role: "system",
+          content:
+            "你是一个专业的游戏AI助手，擅长分析游戏策略、装备选择和任务规划。当你需要推荐装备时，请使用提供的装备工具来表达你的选择。",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      max_tokens: 1500,
+      temperature: 0.7,
+      tools: tools,
+      tool_choice: "auto", // 让AI自动选择是否使用工具
+    };
+
+    console.log("📋 请求体 (Tools):", JSON.stringify(requestBody, null, 2));
+
+    const response = await fetch(this.apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("DeepSeek API错误:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+      });
+      throw new Error(`API请求失败: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("✅ DeepSeek API调用成功 (Tools):", {
+      status: response.status,
+      hasChoices: !!data.choices,
+      choicesCount: data.choices?.length || 0,
+      hasToolCalls: !!data.choices?.[0]?.message?.tool_calls,
+    });
+
+    return data; // 返回完整的响应数据，包含tool_calls
   }
 }
 
