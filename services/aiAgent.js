@@ -5,75 +5,98 @@ class AIAgent {
     this.apiKey = process.env.DEEPSEEK_API_KEY;
     this.apiUrl = "https://api.deepseek.com/v1/chat/completions";
 
-    // 装备数据
+    // 装备数据 - 严格的效果定义
     this.equipmentData = {
       基础剑: {
         description: "最基础的武器",
-        effect: "基础攻击力",
+        effect: "对所有龙族都无效",
+        strictRule: "基础剑对所有龙族完全无效，无法造成任何伤害",
       },
       火焰之剑: {
         description: "火焰附魔的神剑，能融化一切冰霜",
-        effect: "对冰系敌人造成额外伤害",
+        effect: "【仅对冰龙有效】，对其他龙族完全无伤害",
+        strictRule:
+          "火焰之剑只能对冰龙造成伤害，对毒龙、雷龙、火龙大魔王完全无效",
       },
       暗黑之剑: {
         description: "充满暗黑力量的魔剑，雷电克制",
-        effect: "对雷系敌人造成额外伤害",
+        effect: "【仅对雷龙有效】，对其他龙族完全无伤害",
+        strictRule:
+          "暗黑之剑只能对雷龙造成伤害，对冰龙、毒龙、火龙大魔王完全无效",
       },
       圣光盾: {
         description: "圣光护佑的盾牌，能净化毒素",
-        effect: "对毒系敌人免疫",
-      },
-      神圣护盾: {
-        description: "圣光护佑的盾牌，能净化毒素",
-        effect: "对毒系敌人免疫",
+        effect: "【仅对毒龙有效】，对其他龙族完全无效",
+        strictRule:
+          "圣光盾只能对毒龙进行净化，对冰龙、雷龙、火龙大魔王完全无效",
       },
       寒冰之剑: {
-        description: "蕴含冰霜之力的神剑，烈火克制",
-        effect: "对火系敌人造成额外伤害",
+        description: "蕴含冰霜之力的神剑",
+        effect: "对所有龙族都无效，龙族对冰冻免疫",
+        strictRule: "寒冰之剑对所有龙族完全无效，龙族天生对冰冻免疫",
       },
       冰钥匙: {
-        description: "冰龙的钥匙，蕴含冰霜之力",
-        effect: "开启火龙大魔王封印",
+        description: "冰龙的钥匙，封印着冰龙的力量",
+        effect: "用于封印火龙大魔王",
+        strictRule: "冰钥匙是击败火龙大魔王的三把钥匙之一",
       },
       毒钥匙: {
-        description: "毒龙的钥匙，散发毒性能量",
-        effect: "开启火龙大魔王封印",
+        description: "毒龙的钥匙，封印着毒龙的力量",
+        effect: "用于封印火龙大魔王",
+        strictRule: "毒钥匙是击败火龙大魔王的三把钥匙之一",
       },
       雷钥匙: {
-        description: "雷龙的钥匙，闪烁雷电光芒",
-        effect: "开启火龙大魔王封印",
+        description: "雷龙的钥匙，封印着雷龙的力量",
+        effect: "用于封印火龙大魔王",
+        strictRule: "雷钥匙是击败火龙大魔王的三把钥匙之一",
       },
     };
 
-    // Boss数据
+    // Boss数据 - 严格的武器克制关系
     this.bossData = {
       冰龙: {
         type: "ice",
         hp: 500,
-        weakness: ["fire"],
+        weakness: "火焰属性",
         abilities: ["冰霜吐息", "寒冰护甲", "冰冻攻击"],
         requiredEquipment: "火焰之剑",
+        immuneTo: ["暗黑之剑", "圣光盾", "寒冰之剑", "基础剑"],
+        strictRule:
+          "冰龙【仅受火焰之剑伤害】，对其他所有武器完全免疫，任何其他武器都无法造成任何伤害",
+        keyReward: "冰钥匙",
       },
       毒龙: {
         type: "poison",
         hp: 750,
-        weakness: ["holy"],
+        weakness: "圣光属性",
         abilities: ["毒雾喷射", "剧毒爪击", "毒素感染"],
         requiredEquipment: "圣光盾",
+        immuneTo: ["火焰之剑", "暗黑之剑", "寒冰之剑", "基础剑"],
+        strictRule:
+          "毒龙【仅受圣光盾净化】，对其他所有武器完全免疫，任何其他武器都无法造成任何伤害",
+        keyReward: "毒钥匙",
       },
       雷龙: {
         type: "thunder",
         hp: 600,
-        weakness: ["dark"],
+        weakness: "暗黑属性",
         abilities: ["雷电吐息", "电磁护盾", "闪电风暴"],
         requiredEquipment: "暗黑之剑",
+        immuneTo: ["火焰之剑", "圣光盾", "寒冰之剑", "基础剑"],
+        strictRule:
+          "雷龙【仅受暗黑之剑伤害】，对其他所有武器完全免疫，任何其他武器都无法造成任何伤害",
+        keyReward: "雷钥匙",
       },
       火龙大魔王: {
         type: "fire",
         hp: 1000,
-        weakness: ["ice", "water"],
+        weakness: "三把龙族钥匙的封印力量",
         abilities: ["烈焰吐息", "火焰护甲", "炎爆术", "烈火风暴"],
         requiredEquipment: "冰钥匙、毒钥匙、雷钥匙",
+        immuneTo: ["所有普通武器"],
+        strictRule:
+          "火龙大魔王【仅能被三把龙钥匙的封印力量击败】，对所有普通武器完全免疫",
+        keyReward: null,
       },
     };
   }
@@ -92,11 +115,15 @@ class AIAgent {
 - 钥匙数量：${gameState.player.keys}/3
 - 已击败Boss：${gameState.player.defeatedBosses.join(", ") || "无"}
 
-【游戏规则】：
-- 冰龙：需要火焰之剑才能击败，击败后获得冰钥匙
-- 毒龙：需要圣光盾才能击败，击败后获得毒钥匙  
-- 雷龙：需要暗黑之剑才能击败，击败后获得雷钥匙
-- 火龙大魔王：需要集齐3把钥匙才能挑战
+【严格的战斗规则】：
+⚠️ 重要：每种龙只受特定武器伤害，对其他所有武器完全免疫！
+- 冰龙：【仅火焰之剑有效】，对暗黑之剑、圣光盾、寒冰之剑、基础剑完全免疫
+- 毒龙：【仅圣光盾有效】，对火焰之剑、暗黑之剑、寒冰之剑、基础剑完全免疫
+- 雷龙：【仅暗黑之剑有效】，对火焰之剑、圣光盾、寒冰之剑、基础剑完全免疫
+- 火龙大魔王：【仅三把钥匙同时使用才有效】，对所有普通武器完全免疫
+
+❌ 任何未明确标注有效的武器对目标龙都完全无效
+❌ 不要基于常识或其他游戏经验做推理，严格按照上述规则
 
 请按照以下格式输出任务分解：
 
@@ -142,25 +169,38 @@ class AIAgent {
 
     const prompt = `你是一个装备专家，正在为挑战${targetBoss}选择最佳装备组合。
 
+⚠️【重要：严格的武器克制规则】⚠️
+${bossInfo.strictRule}
+
 【挑战目标】：${targetBoss}
-【Boss特性】：
+【Boss详细信息】：
 - 类型：${bossInfo.type}
 - 生命值：${bossInfo.hp}
-- 弱点：${bossInfo.weakness.join(", ")}
+- 唯一弱点：${bossInfo.weakness}
+- 完全免疫：${bossInfo.immuneTo.join(", ")}
 - 技能：${bossInfo.abilities.join(", ")}
+- 【严格规则】：${bossInfo.strictRule}
 
-【玩家当前装备】：
+【玩家当前装备详情】：
 ${gameState.player.equipment
   .map((eq) => {
     const data = this.equipmentData[eq] || {
       description: "特殊物品",
       effect: "未知效果",
+      strictRule: "效果未知",
     };
-    return `- ${eq}：${data.description}（${data.effect}）`;
+    return `- ${eq}：${data.description}
+  ├─ 效果：${data.effect}
+  └─ 规则：${data.strictRule || "无特殊规则"}`;
   })
   .join("\n")}
 
-请根据Boss的特性分析，选择最合适的装备来应对这个挑战。你可以选择使用哪些装备工具。`;
+【关键限制】：
+❌ 除了${bossInfo.requiredEquipment}之外，其他所有武器对${targetBoss}完全无效
+❌ 不要基于常识推理，严格按照上述规则选择
+❌ 只能选择唯一有效的武器：${bossInfo.requiredEquipment}
+
+请严格按照以上规则选择装备，不要选择无效武器。`;
 
     try {
       const response = await this.callDeepSeekAPIWithTools(
@@ -180,6 +220,13 @@ ${gameState.player.equipment
 
     const prompt = `你是一个智能游戏助手，请用思维链的方式分析以下情况。
 
+⚠️【游戏核心规则 - 严格武器克制】⚠️
+- 冰龙：【仅火焰之剑有效】，对暗黑之剑、圣光盾、寒冰之剑、基础剑完全免疫
+- 毒龙：【仅圣光盾有效】，对火焰之剑、暗黑之剑、寒冰之剑、基础剑完全免疫
+- 雷龙：【仅暗黑之剑有效】，对火焰之剑、圣光盾、寒冰之剑、基础剑完全免疫
+- 火龙大魔王：【仅三把钥匙同时使用才有效】，对所有普通武器完全免疫
+❌ 任何未明确标注有效的武器对目标龙都完全无效，不要基于常识推理
+
 【当前情况】：${situation}
 
 【玩家状态】：
@@ -187,8 +234,20 @@ ${gameState.player.equipment
 - 装备：${gameState.player.equipment.join(", ")}
 - 钥匙：${gameState.player.keys}/3
 - 位置：${gameState.player.location}
+- 已击败Boss：${gameState.player.defeatedBosses?.join(", ") || "无"}
 
-请按照思维链的方式逐步分析：
+【装备效果严格定义】：
+${gameState.player.equipment
+  .map((eq) => {
+    const data = this.equipmentData[eq] || {
+      effect: "未知效果",
+      strictRule: "效果未知",
+    };
+    return `- ${eq}：${data.effect}`;
+  })
+  .join("\n")}
+
+请按照思维链的方式逐步分析，严格遵守上述武器克制规则：
 
 【第1步 - 问题理解】：
 我需要理解什么问题？
@@ -196,14 +255,14 @@ ${gameState.player.equipment
 
 【第2步 - 信息收集】：
 我拥有哪些关键信息？
-还缺少什么信息？
+基于严格的武器克制规则，哪些装备有效？
 
 【第3步 - 逻辑分析】：
-基于已有信息，我可以得出什么结论？
-有哪些可能的选择？
+基于严格的游戏规则，我可以得出什么结论？
+哪些选择是有效的？哪些是完全无效的？
 
 【第4步 - 方案评估】：
-每个选择的优缺点是什么？
+每个有效选择的优缺点是什么？
 最优方案是什么？
 
 【第5步 - 行动建议】：
@@ -214,7 +273,7 @@ ${gameState.player.equipment
 可能遇到什么问题？
 如何应对？
 
-请详细展示每一步的思考过程。`;
+请详细展示每一步的思考过程，严格按照游戏规则分析。`;
 
     try {
       const response = await this.callDeepSeekAPI(prompt);
@@ -616,6 +675,7 @@ ${gameState.player.equipment
       const data = this.equipmentData[equipment] || {
         description: "特殊物品",
         effect: "未知效果",
+        strictRule: "效果未知",
       };
 
       // 获取英文函数名
@@ -627,7 +687,11 @@ ${gameState.player.equipment
         type: "function",
         function: {
           name: `use_${englishName}`,
-          description: `使用装备：${equipment}。${data.description}，效果：${data.effect}`,
+          description: `使用装备：${equipment}。${
+            data.description
+          }。严格效果：${data.effect}。规则：${
+            data.strictRule || "无特殊规则"
+          }`,
           parameters: {
             type: "object",
             properties: {
@@ -637,7 +701,7 @@ ${gameState.player.equipment
               },
               reason: {
                 type: "string",
-                description: "选择这个装备的理由",
+                description: "选择这个装备的理由（必须基于严格的克制规则）",
               },
             },
             required: ["target", "reason"],

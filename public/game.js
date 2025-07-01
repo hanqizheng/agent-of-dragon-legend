@@ -14,28 +14,28 @@ class GameState {
     this.regions = {
       training: {
         name: "练级圣地",
-        description: "升级10级并获得火焰之剑",
+        description: "升级10级并获得火焰之剑(专门克制冰龙)",
         reward: { level: 10, equipment: "火焰之剑" },
         completed: false,
         image: "fire_land.jpeg",
       },
       marsh: {
         name: "剧毒深渊",
-        description: "获得暗黑之剑",
+        description: "获得暗黑之剑(专门克制雷龙)",
         reward: { equipment: "暗黑之剑" },
         completed: false,
         image: "marsh_land.jpeg",
       },
       thunder: {
         name: "雷霆内部",
-        description: "获得圣光盾",
+        description: "获得圣光盾(专门克制毒龙)",
         reward: { equipment: "圣光盾" },
         completed: false,
         image: "thunder_land.jpeg",
       },
       ice: {
         name: "寒冰群峰",
-        description: "获得寒冰之剑",
+        description: "获得寒冰之剑(对所有龙都无效)",
         reward: { equipment: "寒冰之剑" },
         completed: false,
         image: "ice_land.jpeg",
@@ -50,6 +50,9 @@ class GameState {
         defeated: false,
         image: "ice_dragon.png",
         keyImage: "ice_key.webp",
+        weakness: "火焰属性",
+        immuneTo: ["暗黑之剑", "圣光盾", "寒冰之剑", "基础剑"],
+        description: "冰龙只受火焰伤害，其他所有武器对其无效",
       },
       "poison-dragon": {
         name: "毒龙",
@@ -58,6 +61,9 @@ class GameState {
         defeated: false,
         image: "green_dragon.jpeg",
         keyImage: "poison_key.jpeg",
+        weakness: "圣光属性",
+        immuneTo: ["火焰之剑", "暗黑之剑", "寒冰之剑", "基础剑"],
+        description: "毒龙只受圣光净化，其他所有武器对其无效",
       },
       "thunder-dragon": {
         name: "雷龙",
@@ -66,6 +72,9 @@ class GameState {
         defeated: false,
         image: "electric_dragon.png",
         keyImage: "thunder_key.avif",
+        weakness: "暗黑属性",
+        immuneTo: ["火焰之剑", "圣光盾", "寒冰之剑", "基础剑"],
+        description: "雷龙只受暗黑之力伤害，其他所有武器对其无效",
       },
       "fire-dragon": {
         name: "火龙大魔王",
@@ -73,6 +82,9 @@ class GameState {
         requiredEquipment: "三把钥匙", // 添加这个字段用于显示
         defeated: false,
         image: "fire_dragon.webp",
+        weakness: "需要三把龙族钥匙的封印力量",
+        immuneTo: ["所有普通武器"],
+        description: "火龙大魔王只能被三把龙钥匙的封印力量击败",
       },
     };
 
@@ -354,11 +366,11 @@ class AIAgent {
 
   getEquipmentDescription(equipment) {
     const descriptions = {
-      基础剑: "普通的剑，攻击力一般",
-      火焰之剑: "火焰附魔，对冰系敌人有奇效",
-      暗黑之剑: "暗黑力量，对雷系敌人有效",
-      圣光盾: "圣光护佑，对毒系敌人免疫",
-      寒冰之剑: "冰霜之力，对火系敌人克制",
+      基础剑: "新手装备，对所有龙族都无效",
+      火焰之剑: "【仅对冰龙有效】火焰克制冰系，对其他龙族完全无伤害",
+      暗黑之剑: "【仅对雷龙有效】暗黑克制雷系，对其他龙族完全无伤害",
+      圣光盾: "【仅对毒龙有效】圣光净化毒素，对其他龙族完全无效",
+      寒冰之剑: "冰霜武器，对所有龙族都无效，龙族对冰冻免疫",
     };
     return descriptions[equipment] || "神秘装备";
   }
@@ -1381,14 +1393,14 @@ class GameController {
   // 获取装备描述
   getEquipmentDescription(equipment) {
     const descriptions = {
-      基础剑: "普通的剑，攻击力一般",
-      火焰之剑: "火焰附魔，对冰系敌人有奇效",
-      暗黑之剑: "暗黑力量，对雷系敌人有效",
-      圣光盾: "圣光护佑，对毒系敌人免疫",
-      寒冰之剑: "冰霜之力，对火系敌人克制",
-      冰钥匙: "冰龙的钥匙，蕴含冰霜之力",
-      毒钥匙: "毒龙的钥匙，散发毒性能量",
-      雷钥匙: "雷龙的钥匙，闪烁雷电光芒",
+      基础剑: "新手装备，对所有龙族都无效",
+      火焰之剑: "【仅对冰龙有效】火焰克制冰系，对其他龙族完全无伤害",
+      暗黑之剑: "【仅对雷龙有效】暗黑克制雷系，对其他龙族完全无伤害",
+      圣光盾: "【仅对毒龙有效】圣光净化毒素，对其他龙族完全无效",
+      寒冰之剑: "冰霜武器，对所有龙族都无效，龙族对冰冻免疫",
+      冰钥匙: "冰龙的钥匙，封印着冰龙的力量",
+      毒钥匙: "毒龙的钥匙，封印着毒龙的力量",
+      雷钥匙: "雷龙的钥匙，封印着雷龙的力量",
     };
     return descriptions[equipment] || "神秘装备";
   }
